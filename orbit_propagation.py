@@ -19,7 +19,7 @@ def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]
 def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetime]):
     """
     Propagate satellite positions from TLEs.
-    
+
     Returns:
         dict: name -> {
             time_list: list of datetime,
@@ -29,20 +29,18 @@ def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetim
     """
     ts = load.timescale()
     results = {}
-
-    # Convert datetimes to Skyfield Time objects once
     sky_times = ts.from_datetimes(times)
 
     for name, (l1, l2) in tle_map.items():
         sat = EarthSatellite(l1, l2, name, ts)
         geocentric = sat.at(sky_times)
 
-        # ECI positions (km)
+        # ECI positions
         eci_x, eci_y, eci_z = geocentric.position.km
         eci = np.vstack([eci_x, eci_y, eci_z]).T
 
-        # ECEF positions (km) using modern Skyfield API
-        itrs = geocentric.itrs()
+        # ECEF positions (modern Skyfield API)
+        itrs = geocentric.itrs()               # ✅ use this
         ecef_x, ecef_y, ecef_z = itrs.position.km
         ecef = np.vstack([ecef_x, ecef_y, ecef_z]).T
 
@@ -53,3 +51,4 @@ def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetim
         )
 
     return results
+
