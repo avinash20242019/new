@@ -1,12 +1,13 @@
-
 from typing import Dict, List, Tuple
 import numpy as np
 from skyfield.api import Loader, EarthSatellite
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
+# Load Skyfield data
 load = Loader(".skyfield_data")
 
 def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]:
+    """Generate a list of datetime objects from start, over a number of days, at given minute intervals."""
     times = []
     t = start
     end = start + timedelta(days=days)
@@ -17,29 +18,38 @@ def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]
 
 def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetime]):
     """
-    For each satellite name -> (L1, L2), returns dict of:
-      name -> dict(time_list=[...], ecef_xyz=np.array[[x,y,z],...], eci_xyz=np.array[[x,y,z],...])
-    Units: kilometers
+    Propagate satellite positions from TLEs.
+    
+    Returns:
+        dict: name -> {
+            time_list: list of datetime,
+            eci_xyz: np.array of shape (N, 3) in km,
+            ecef_xyz: np.array of shape (N, 3) in km
+        }
     """
     ts = load.timescale()
     results = {}
-    # Convert datetimes to Skyfield times once
+
+    # Convert datetimes to Skyfield Time objects once
     sky_times = ts.from_datetimes(times)
+
     for name, (l1, l2) in tle_map.items():
         sat = EarthSatellite(l1, l2, name, ts)
-        # Observed in ITRS (ECEF) via wgs84; and also GCRS (ECI-ish) positions via .at().position.km
         geocentric = sat.at(sky_times)
-        eci_x, eci_y, eci_z = geocentric.position.km  # ECI-like
+
+        # ECI positions (km)
+        eci_x, eci_y, eci_z = geocentric.position.km
         eci = np.vstack([eci_x, eci_y, eci_z]).T
 
-        # ECEF for drawing relative to rotating Earth (optional)
-        itrs = geocentric.frame_xyz('itrs').km  # x,y,z in Earth-fixed (ITRS)
-
-        ecef = np.vstack(itrs).T
+        # ECEF positions (km) using modern Skyfield API
+        itrs = geocentric.itrs()
+        ecef_x, ecef_y, ecef_z = itrs.position.km
+        ecef = np.vstack([ecef_x, ecef_y, ecef_z]).T
 
         results[name] = dict(
             time_list=times,
             eci_xyz=eci,
             ecef_xyz=ecef
         )
+
     return results
