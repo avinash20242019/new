@@ -33,7 +33,8 @@ def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetim
         eci = np.vstack([eci_x, eci_y, eci_z]).T
 
         # ECEF for drawing relative to rotating Earth (optional)
-        itrs = geocentric.itrs_xyz.km  # x,y,z in ECEF
+        itrs = geocentric.frame_xyz('itrs').km
+ # x,y,z in ECEF
         ecef = np.vstack(itrs).T
 
         results[name] = dict(
