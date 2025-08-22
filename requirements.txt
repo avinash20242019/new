@@ -5,4 +5,5 @@ requests
 plotly
 skyfield
 sgp4
+3.11
 
