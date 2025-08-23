@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 load = Loader(".skyfield_data")
 
 def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]:
-    """Generate datetime objects from start, over a number of days, at given minute intervals."""
     times = []
     t = start
     end = start + timedelta(days=days)
@@ -17,7 +16,6 @@ def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]
     return times
 
 def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetime]):
-    """Propagate satellite positions from TLEs (ECI + ECEF)."""
     ts = load.timescale()
     results = {}
 
@@ -28,15 +26,14 @@ def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetim
 
         for t in times:
             sky_t = ts.utc(t.year, t.month, t.day, t.hour, t.minute, t.second)
-            geocentric = sat.at(sky_t)
+            geocentric = sat.at(sky_t)  # single-time Geocentric
 
             # ECI positions in km
             eci_list.append(geocentric.position.km)
 
-            # ECEF positions in km
-            itrs = geocentric.itrs()  # single-time ECEF
-            pos_m = itrs.position.m
-            ecef_list.append([pos_m[0]/1000, pos_m[1]/1000, pos_m[2]/1000])
+            # ECEF positions in km using version-safe .itrs()
+            ecef = geocentric.itrs().position.m
+            ecef_list.append([ecef[0]/1000, ecef[1]/1000, ecef[2]/1000])
 
         results[name] = dict(
             time_list=times,
@@ -45,3 +42,4 @@ def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetim
         )
 
     return results
+
