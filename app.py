@@ -1,15 +1,14 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 
-from tle_utils import fetch_tle
 from orbit_propagation import build_times, propagate_positions
 
 st.set_page_config(page_title="GATI: 3D Satellite Orbits", layout="wide")
 st.title("🛰️ GATI – Animated Satellite Orbits")
-st.caption("Collects TLEs for satellites and animates ~1 month of orbital motion in 3D.")
+st.caption("Animated satellite orbits using pre-downloaded TLEs (~1 month simulation).")
 
 with st.sidebar:
     st.header("Configuration")
@@ -18,31 +17,21 @@ with st.sidebar:
     start_date = st.date_input("Start date (UTC)", value=datetime.utcnow().date())
     start_dt = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
     st.markdown("---")
-    st.write("You can edit `satellites.json` to change the satellites.")
+    st.write("You can edit `tle_data.json` to change satellites and TLEs.")
 
-# Load satellites list
-with open("satellites.json", "r") as f:
-    sats = json.load(f)  # name -> catnr
+# Load TLEs locally
+with open("tle_data.json", "r") as f:
+    tle_map = json.load(f)  # name -> [line1, line2]
 
-names = list(sats.keys())
+names = list(tle_map.keys())
 st.write(f"Tracking **{len(names)} satellites**: " + ", ".join(names))
-
-# Fetch TLEs (cached)
-@st.cache_data(show_spinner=True, ttl=3600)
-def get_tles(catnrs: dict):
-    tle_map = {}
-    for name, catnr in catnrs.items():
-        l1, l2 = fetch_tle(catnr)
-        tle_map[name] = (l1, l2)
-    return tle_map
-
-with st.spinner("Fetching latest TLEs..."):
-    tle_map = get_tles(sats)
 
 # Build time series and propagate
 times = build_times(start_dt, days=days, step_minutes=step)
 with st.spinner("Propagating orbits..."):
-    results = propagate_positions(tle_map, times)
+    # Convert TLE JSON format to expected tuple format
+    tle_map_tuples = {name: tuple(lines) for name, lines in tle_map.items()}
+    results = propagate_positions(tle_map_tuples, times)
 
 # Build Earth sphere
 R_earth = 6371.0
@@ -96,4 +85,3 @@ fig.update_layout(
 
 st.plotly_chart(fig, use_container_width=True)
 st.success("Done! Use the Play button to animate.")
-
