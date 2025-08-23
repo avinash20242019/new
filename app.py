@@ -20,7 +20,7 @@ with st.sidebar:
     st.markdown("---")
     st.write("Edit `tle_data.json` to change satellites.")
 
-# Load local TLEs
+# Load TLEs
 with open("tle_data.json", "r") as f:
     tle_map_json = json.load(f)
 
@@ -28,12 +28,12 @@ tle_map_tuples = {name: tuple(lines) for name, lines in tle_map_json.items()}
 names = list(tle_map_tuples.keys())
 st.write(f"Tracking **{len(names)} satellites**: " + ", ".join(names))
 
-# Build time series and propagate
+# Time series & propagation
 times = build_times(start_dt, days=days, step_minutes=step)
 with st.spinner("Propagating orbits..."):
     results = propagate_positions(tle_map_tuples, times)
 
-# Build Earth sphere
+# Earth sphere
 R_earth = 6371.0
 phi = np.linspace(0, np.pi, 50)
 theta = np.linspace(0, 2*np.pi, 100)
@@ -44,11 +44,11 @@ z = R_earth * np.outer(np.cos(phi), np.ones_like(theta))
 fig = go.Figure()
 fig.add_trace(go.Surface(x=x, y=y, z=z, opacity=0.7, showscale=False, name="Earth"))
 
-# Animation setup
+# Animation
 frames = []
 initial_data = []
-symbols = ["circle", "square", "diamond", "cross", "x", "triangle-up",
-           "triangle-down", "triangle-left", "triangle-right", "star"]
+symbols = ["circle", "square", "diamond", "cross", "x",
+           "triangle-up", "triangle-down", "triangle-left", "triangle-right", "star"]
 symbol_map = {name: symbols[i % len(symbols)] for i, name in enumerate(names)}
 trail_frames = max(1, int(6*60/step))
 
