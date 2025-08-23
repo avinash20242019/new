@@ -40,7 +40,8 @@ def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetim
         eci = np.vstack([eci_x, eci_y, eci_z]).T
 
         # ECEF positions (modern Skyfield API)
-        itrs = geocentric.itrs()               # ✅ use this
+        itrs = geocentric.itrs_xyz()  # ✅ returns (x, y, z) in meters
+               # ✅ use this
         ecef_x, ecef_y, ecef_z = itrs.position.km
         ecef = np.vstack([ecef_x, ecef_y, ecef_z]).T
 
