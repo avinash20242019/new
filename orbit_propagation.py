@@ -25,15 +25,16 @@ def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetim
 
         for t in times:
             sky_t = ts.utc(t.year, t.month, t.day, t.hour, t.minute, t.second)
-            geocentric = sat.at(sky_t)  # single-time Geocentric
+            geocentric = sat.at(sky_t)
 
             # ECI in km
             eci_list.append(geocentric.position.km)
 
-            # ECEF in km
-            itrs = geocentric.itrs()  # single-time ECEF
-            pos_m = itrs.position.m
-            ecef_list.append([pos_m[0]/1000, pos_m[1]/1000, pos_m[2]/1000])
+            # ECEF in km using frame_xyz safely
+            ecef_au = geocentric.frame_xyz('itrs').au  # tuple (x, y, z) in AU
+            km_factor = 149597870.7  # 1 AU = 149,597,870.7 km
+            ecef_km = [coord * km_factor for coord in ecef_au]
+            ecef_list.append(ecef_km)
 
         results[name] = dict(
             time_list=times,
