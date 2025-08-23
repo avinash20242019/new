@@ -16,7 +16,7 @@ def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]
     return times
 
 def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetime]):
-    """Propagate satellite positions from TLEs."""
+    """Propagate satellite positions from TLEs using frame_xyz('itrs') for ECEF."""
     ts = load.timescale()
     results = {}
 
@@ -26,20 +26,9 @@ def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetim
         ecef_list = []
 
         for t in times:
+            # Single-time Skyfield Time
             sky_t = ts.utc(t.year, t.month, t.day, t.hour, t.minute, t.second)
-            geocentric = sat.at(sky_t)            # single-time Geocentric
+            geocentric = sat.at(sky_t)  # single-time Geocentric
 
             # ECI positions in km
-            eci_list.append(geocentric.position.km)
-
-            # ECEF positions in km using correct method
-            itrs = geocentric.itrs()              # ✅ call it as method
-            ecef_list.append(itrs.position.km)    # (x, y, z) in km
-
-        results[name] = dict(
-            time_list=times,
-            eci_xyz=np.array(eci_list),
-            ecef_xyz=np.array(ecef_list)
-        )
-
-    return results
+            eci_list.append(geocentric.positi_
