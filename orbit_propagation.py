@@ -1,15 +1,10 @@
+# orbit_propagation.py
 from typing import Dict, List, Tuple
-import numpy as np
-from skyfield.api import Loader, EarthSatellite
 from datetime import datetime, timedelta
-
-# Load Skyfield data
-load = Loader(".skyfield_data")
+import numpy as np
+from sgp4.api import Satrec, jday
 
 def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]:
-    """
-    Generate a list of datetime objects from start over a number of days at given intervals.
-    """
     times = []
     t = start
     end = start + timedelta(days=days)
@@ -18,40 +13,32 @@ def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]
         t += timedelta(minutes=step_minutes)
     return times
 
-def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetime]):
+def propagate_positions(tle_map: Dict[str, Tuple[str, str, str]], times: List[datetime]):
     """
-    Propagate satellite positions from TLEs.
+    Propagate satellite positions from TLEs using SGP4.
     
     Returns:
-        dict: satellite name -> {
+        dict: name -> {
             time_list: list of datetime,
-            eci_xyz: np.array of shape (N,3) in km,
-            ecef_xyz: np.array of shape (N,3) in km
+            eci_xyz: np.array of shape (N,3) in km
         }
     """
-    ts = load.timescale()
     results = {}
-
-    for name, (l1, l2) in tle_map.items():
-        sat = EarthSatellite(l1, l2, name, ts)
+    for name, (title, l1, l2) in tle_map.items():
+        sat = Satrec.twoline2rv(l1, l2)
         eci_list = []
-        ecef_list = []
 
         for t in times:
-            sky_t = ts.utc(t.year, t.month, t.day, t.hour, t.minute, t.second)
-            geocentric = sat.at(sky_t)  # single-time Geocentric
-
-            # ECI positions in km
-            eci_list.append(geocentric.position.km)
-
-            # ECEF positions in km using frame_xyz('itrs')
-            ecef_xyz = geocentric.frame_xyz('itrs').km
-            ecef_list.append(ecef_xyz)
+            jd, fr = jday(t.year, t.month, t.day, t.hour, t.minute, t.second)
+            e, r, v = sat.sgp4(jd, fr)
+            if e == 0:
+                eci_list.append([r[0], r[1], r[2]])  # km
+            else:
+                eci_list.append([None, None, None])
 
         results[name] = dict(
             time_list=times,
-            eci_xyz=np.array(eci_list),
-            ecef_xyz=np.array(ecef_list)
+            eci_xyz=np.array(eci_list)
         )
 
     return results
