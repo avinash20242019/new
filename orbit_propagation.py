@@ -3,6 +3,7 @@ import numpy as np
 from skyfield.api import Loader, EarthSatellite
 from datetime import datetime, timedelta
 
+# Initialize Skyfield data loader
 load = Loader(".skyfield_data")
 
 def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]:
@@ -27,13 +28,11 @@ def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetim
             sky_t = ts.utc(t.year, t.month, t.day, t.hour, t.minute, t.second)
             geocentric = sat.at(sky_t)
 
-            # ECI in km
+            # ECI coordinates in kilometers
             eci_list.append(geocentric.position.km)
 
-            # ECEF in km using frame_xyz safely
-            ecef_au = geocentric.frame_xyz('itrs').au  # tuple (x, y, z) in AU
-            km_factor = 149597870.7  # 1 AU = 149,597,870.7 km
-            ecef_km = [coord * km_factor for coord in ecef_au]
+            # ECEF coordinates in kilometers using Skyfield's current recommended method
+            ecef_km = geocentric.itrs_xyz.km  # (x, y, z) in km
             ecef_list.append(ecef_km)
 
         results[name] = dict(
