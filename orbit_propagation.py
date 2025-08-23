@@ -7,10 +7,6 @@ from datetime import datetime, timedelta
 load = Loader(".skyfield_data")
 
 def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]:
-    """
-    Generate a list of datetime objects from start, over a number of days,
-    at given minute intervals.
-    """
     times = []
     t = start
     end = start + timedelta(days=days)
@@ -20,36 +16,30 @@ def build_times(start: datetime, days: int, step_minutes: int) -> List[datetime]
     return times
 
 def propagate_positions(tle_map: Dict[str, Tuple[str, str]], times: List[datetime]):
-    """
-    Propagate satellite positions from TLEs.
-
-    Returns:
-        dict: name -> {
-            time_list: list of datetime,
-            eci_xyz: np.array of shape (N, 3) in km,
-            ecef_xyz: np.array of shape (N, 3) in km
-        }
-    """
     ts = load.timescale()
     results = {}
-    sky_times = ts.from_datetimes(times)
 
     for name, (l1, l2) in tle_map.items():
         sat = EarthSatellite(l1, l2, name, ts)
-        geocentric = sat.at(sky_times)
+        eci_list = []
+        ecef_list = []
 
-        # ECI positions in km
-        eci_x, eci_y, eci_z = geocentric.position.km
-        eci = np.vstack([eci_x, eci_y, eci_z]).T
+        for t in times:
+            sky_t = ts.utc(t.year, t.month, t.day, t.hour, t.minute, t.second)
+            geocentric = sat.at(sky_t)
 
-        # ECEF positions in km using modern Skyfield API
-        ecef_m = geocentric.frame_xyz('itrs')  # tuple (x, y, z) in meters
-        ecef = np.vstack([arr / 1000 for arr in ecef_m]).T  # convert to km
+            # ECI in km
+            eci_x, eci_y, eci_z = geocentric.position.km
+            eci_list.append([eci_x, eci_y, eci_z])
+
+            # ECEF in km
+            x_m, y_m, z_m = geocentric.frame_xyz('itrs')  # meters
+            ecef_list.append([x_m/1000, y_m/1000, z_m/1000])  # convert to km
 
         results[name] = dict(
             time_list=times,
-            eci_xyz=eci,
-            ecef_xyz=ecef
+            eci_xyz=np.array(eci_list),
+            ecef_xyz=np.array(ecef_list)
         )
 
     return results
